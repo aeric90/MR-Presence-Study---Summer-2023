@@ -4,7 +4,10 @@
 EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
-  m_Scenes: []
+  m_Scenes:
+  - enabled: 1
+    path: Assets/Scenes/MR Presence Study - Summer 2023.unity
+    guid: 9fc0d4010bbf28b4594072e72b8655ab
   m_configObjects:
     Unity.XR.Oculus.Settings: {fileID: 11400000, guid: 805a7b65d13f1c541bc5dc2c95b968a8, type: 2}
     com.unity.xr.management.loader_settings: {fileID: 11400000, guid: 58d4ca580fa68a749ba0ea77f8143a76, type: 2}
