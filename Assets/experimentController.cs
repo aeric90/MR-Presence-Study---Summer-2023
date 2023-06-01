@@ -137,14 +137,14 @@ public class experimentController : MonoBehaviour {
 
     private void SpawnCoin()
     {
-        int spawnPoint = Random.Range(0, coinSpawns.Count);
+        int spawnPoint = Random.Range(0, coinSpawns.Count - 1);
 
         if (toonVE)
         {
-            Instantiate(toonCoinPrefab, coinSpawns[6].transform.position, Quaternion.identity);
+            Instantiate(toonCoinPrefab, coinSpawns[spawnPoint].transform.position, Quaternion.identity);
         } else
         {
-            Instantiate(realCoinPrefab, coinSpawns[6].transform.position, Quaternion.identity);
+            Instantiate(realCoinPrefab, coinSpawns[spawnPoint].transform.position, Quaternion.identity);
         }
           
         coinSpawnCount++;
