@@ -141,10 +141,10 @@ public class experimentController : MonoBehaviour {
 
         if (toonVE)
         {
-            Instantiate(toonCoinPrefab, coinSpawns[spawnPoint].transform.position, Quaternion.identity);
+            Instantiate(toonCoinPrefab, coinSpawns[6].transform.position, Quaternion.identity); // Instantiate(toonCoinPrefab, coinSpawns[spawnPoint].transform.position, Quaternion.identity);
         } else
         {
-            Instantiate(realCoinPrefab, coinSpawns[spawnPoint].transform.position, Quaternion.identity);
+            Instantiate(realCoinPrefab, coinSpawns[6].transform.position, Quaternion.identity); // Instantiate(realCoinPrefab, coinSpawns[spawnPoint].transform.position, Quaternion.identity);
         }
           
         coinSpawnCount++;
