@@ -25,8 +25,11 @@ public class experimentController : MonoBehaviour {
     public int maxCoins = 5;
     public float timeToSpawn = 1.0f;
 
+    public GameObject experimentEnv;
+    public GameObject participantUI;
 
-    private PROGRAM_STATUS currentStatus = PROGRAM_STATUS.TRIAL;
+
+    private PROGRAM_STATUS currentStatus = PROGRAM_STATUS.START;
 
     public int[,] conditionSquare = {   {0, 1, 3, 4, 5, 2 }, 
                                         {1, 4, 0, 2, 3, 5 }, 
@@ -49,7 +52,7 @@ public class experimentController : MonoBehaviour {
     void Start()
     {
         instance = this;
-        SetNextVE();
+        //SetNextVE();
     }
 
     // Update is called once per frame
@@ -94,6 +97,18 @@ public class experimentController : MonoBehaviour {
             SetNextVE();
             buttonController.instance.SetActive(false);
             currentStatus = PROGRAM_STATUS.TRIAL;
+        }
+    }
+
+    public void UIStart(string PID)
+    {
+        if(PID != "")
+        {
+            participantID = int.Parse(PID);
+            experimentEnv.SetActive(true);
+            participantUI.SetActive(false);
+            currentStatus = PROGRAM_STATUS.TRIAL;
+            SetNextVE();
         }
     }
 
