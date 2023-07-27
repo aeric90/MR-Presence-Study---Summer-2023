@@ -11,6 +11,19 @@ public enum PROGRAM_STATUS
     END
 }
 
+[System.Serializable]
+public class coinSpawn
+{
+    public GameObject coin;
+    public GameObject spawn;
+    
+    public coinSpawn(GameObject coin, GameObject spawn)
+    {
+        this.coin = coin;
+        this.spawn = spawn;
+    }
+} 
+
 public class experimentController : MonoBehaviour {
 
     public static experimentController instance;
@@ -23,13 +36,19 @@ public class experimentController : MonoBehaviour {
     public GameObject realCoinPrefab;
     public GameObject toonCoinPrefab;
     public int maxCoins = 5;
-    public float timeToSpawn = 1.0f;
+    public int maxTotalCoins = 5;
+    public float timeBeforeSpawn = 90.0f;
+    public bool spawnCoins = false;
+    public float timeToSpawn = 30.0f;
 
     public GameObject experimentEnv;
     public GameObject participantUI;
 
+    public List<GameObject> availSpawn = new List<GameObject>();
+    public List<coinSpawn> coinSpawnList = new List<coinSpawn>();
 
-    private PROGRAM_STATUS currentStatus = PROGRAM_STATUS.START;
+
+    private PROGRAM_STATUS currentStatus = PROGRAM_STATUS.TEST;
 
     public int[,] conditionSquare = {   {0, 1, 3, 4, 5, 2 }, 
                                         {1, 4, 0, 2, 3, 5 }, 
@@ -52,17 +71,35 @@ public class experimentController : MonoBehaviour {
     void Start()
     {
         instance = this;
-        //SetNextVE();
+
+        for(int i = 0; i < coinSpawns.Count - 1; i++)
+        {
+            availSpawn.Add(coinSpawns[i]);
+        }
+
+        SetNextVE();
     }
 
     // Update is called once per frame
     void Update()
     {
-        if (OVRInput.Get(OVRInput.Button.One) && currentStatus == PROGRAM_STATUS.TEST) SetNextVE();
+        if (OVRInput.Get(OVRInput.Button.PrimaryThumbstick) && OVRInput.Get(OVRInput.Button.SecondaryThumbstick)) SetNextVE();
+        if (OVRInput.Get(OVRInput.RawButton.A) && OVRInput.Get(OVRInput.RawButton.X)) ResetCoins();
 
         if (currentStatus == PROGRAM_STATUS.TEST || currentStatus == PROGRAM_STATUS.TRIAL)
         {
-            if (coinSpawnCount < maxCoins)
+            if (!spawnCoins)
+            {
+                if (timeElapsed >= timeBeforeSpawn)
+                {
+                    spawnCoins = true;
+                    timeElapsed = 0.0f;
+                }
+
+                timeElapsed += Time.deltaTime;
+            }
+
+            if (coinSpawnCount < maxCoins && spawnCoins)
             {
                 if (timeElapsed >= timeToSpawn)
                 {
@@ -130,18 +167,18 @@ public class experimentController : MonoBehaviour {
         currentVE = newVE;
         conditions[currentVE].SetActive(true);
         if(conditions[currentVE].name.Contains("Real")) {
-            passthroughLayer.edgeRenderingEnabled = false;
+            //passthroughLayer.edgeRenderingEnabled = false;
             toonVE = false;
         } else {
-            passthroughLayer.edgeRenderingEnabled = true;
+            //passthroughLayer.edgeRenderingEnabled = true;
             toonVE = true;
         }
 
         if (conditions[currentVE].name.Contains("High")) {
-            ovrManager.isInsightPassthroughEnabled = false;
+            //ovrManager.isInsightPassthroughEnabled = false;
             centerEye.clearFlags = CameraClearFlags.Skybox;
         } else {
-            ovrManager.isInsightPassthroughEnabled = true;
+            //ovrManager.isInsightPassthroughEnabled = true;
             centerEye.clearFlags = CameraClearFlags.SolidColor;
         }
 
@@ -152,21 +189,50 @@ public class experimentController : MonoBehaviour {
 
     private void SpawnCoin()
     {
-        int spawnPoint = Random.Range(0, coinSpawns.Count - 1);
+        if (coinSpawnCount < maxCoins)
+        {
+            int spawnPoint = Random.Range(0, availSpawn.Count);
+            GameObject newCoin = null;
 
-        if (toonVE)
-        {
-            Instantiate(toonCoinPrefab, coinSpawns[6].transform.position, Quaternion.identity); // Instantiate(toonCoinPrefab, coinSpawns[spawnPoint].transform.position, Quaternion.identity);
-        } else
-        {
-            Instantiate(realCoinPrefab, coinSpawns[6].transform.position, Quaternion.identity); // Instantiate(realCoinPrefab, coinSpawns[spawnPoint].transform.position, Quaternion.identity);
+            if (toonVE)
+            {
+                newCoin = Instantiate(toonCoinPrefab, availSpawn[spawnPoint].transform.position, Quaternion.identity);
+            }
+            else
+            {
+                newCoin = Instantiate(realCoinPrefab, availSpawn[spawnPoint].transform.position, Quaternion.identity);
+            }
+
+            coinSpawn newSpawn = new coinSpawn(newCoin, availSpawn[spawnPoint]);
+            coinSpawnList.Add(newSpawn);
+            availSpawn.Remove(availSpawn[spawnPoint]);  
+
+            coinSpawnCount++;
         }
-          
-        coinSpawnCount++;
     }
 
-    public void AddCoinCount()
+    public void AddCoinCount(GameObject coin) 
     {
+        foreach (coinSpawn spawn in coinSpawnList)
+        {
+            if(spawn.coin == coin)
+            {
+                availSpawn.Add(spawn.spawn);
+                coinSpawnList.Remove(spawn);
+                break;
+            }
+        }
+
+        Destroy(coin);
+        coinSpawnCount--;
         coinCount++;
+    }
+
+    private void ResetCoins()
+    {
+        foreach (coinSpawn spawn in coinSpawnList)
+        {
+            spawn.coin.transform.position = spawn.spawn.transform.position;
+        }
     }
 }

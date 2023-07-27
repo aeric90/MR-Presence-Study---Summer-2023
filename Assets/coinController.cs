@@ -20,8 +20,7 @@ public class coinController : MonoBehaviour
     {
         if(other.gameObject.tag == "wellWater")
         {
-            experimentController.instance.AddCoinCount();
-            Destroy(this.gameObject);
+            experimentController.instance.AddCoinCount(this.gameObject);
         }
     }
 }
