@@ -8507,6 +8507,8 @@ MonoBehaviour:
   timeToSpawn: 10
   experimentEnv: {fileID: 470358975}
   participantUI: {fileID: 1114040580}
+  availSpawn: []
+  coinSpawnList: []
   coinSpawns:
   - {fileID: 1697830426}
   - {fileID: 854092944}

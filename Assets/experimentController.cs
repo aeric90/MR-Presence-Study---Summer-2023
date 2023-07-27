@@ -83,8 +83,8 @@ public class experimentController : MonoBehaviour {
     // Update is called once per frame
     void Update()
     {
-        if (OVRInput.Get(OVRInput.Button.PrimaryThumbstick) && OVRInput.Get(OVRInput.Button.SecondaryThumbstick)) SetNextVE();
-        if (OVRInput.Get(OVRInput.RawButton.A) && OVRInput.Get(OVRInput.RawButton.X)) ResetCoins();
+        if ((OVRInput.Get(OVRInput.Button.PrimaryThumbstick) && OVRInput.Get(OVRInput.Button.SecondaryThumbstick)) || Input.GetKeyDown(KeyCode.E)) SetNextVE();
+        if ((OVRInput.Get(OVRInput.RawButton.A) && OVRInput.Get(OVRInput.RawButton.X)) || Input.GetKeyDown(KeyCode.R)) ResetCoins();
 
         if (currentStatus == PROGRAM_STATUS.TEST || currentStatus == PROGRAM_STATUS.TRIAL)
         {
