@@ -129,8 +129,7 @@ public class experimentController : MonoBehaviour {
     public void buttonPush()
     {
         if(currentStatus == PROGRAM_STATUS.POST_TRIAL)
-        {
-            trialNumber++;
+        { 
             SetNextVE();
             buttonController.instance.SetActive(false);
             currentStatus = PROGRAM_STATUS.TRIAL;
@@ -151,6 +150,8 @@ public class experimentController : MonoBehaviour {
 
     private void SetNextVE()
     {
+        DeleteCoins();
+        trialNumber++;
         if (currentStatus == PROGRAM_STATUS.TEST || participantID == 0)
         {
             if(trialNumber >= conditions.Count) trialNumber = 0;
@@ -167,10 +168,10 @@ public class experimentController : MonoBehaviour {
         currentVE = newVE;
         conditions[currentVE].SetActive(true);
         if(conditions[currentVE].name.Contains("Real")) {
-            //passthroughLayer.edgeRenderingEnabled = false;
+            passthroughLayer.edgeRenderingEnabled = false;
             toonVE = false;
         } else {
-            //passthroughLayer.edgeRenderingEnabled = true;
+            passthroughLayer.edgeRenderingEnabled = true;
             toonVE = true;
         }
 
@@ -234,5 +235,16 @@ public class experimentController : MonoBehaviour {
         {
             spawn.coin.transform.position = spawn.spawn.transform.position;
         }
+    }
+
+    private void DeleteCoins()
+    {
+        foreach(coinSpawn spawn in coinSpawnList)
+        {
+            availSpawn.Add(spawn.spawn);
+            Destroy(spawn.coin);
+        }
+
+        coinSpawnList.Clear();
     }
 }
