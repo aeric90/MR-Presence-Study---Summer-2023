@@ -237,6 +237,18 @@ public class experimentController : MonoBehaviour {
         }
     }
 
+    public void ResetCoin(GameObject coin)
+    {
+        foreach (coinSpawn spawn in coinSpawnList)
+        {
+            if (spawn.coin == coin)
+            {
+                coin.transform.position = spawn.spawn.transform.position;
+                break;
+            }
+        }
+    }
+
     private void DeleteCoins()
     {
         foreach(coinSpawn spawn in coinSpawnList)

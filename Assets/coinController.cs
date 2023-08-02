@@ -18,9 +18,8 @@ public class coinController : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        if(other.gameObject.tag == "wellWater")
-        {
-            experimentController.instance.AddCoinCount(this.gameObject);
-        }
+        if(other.gameObject.tag == "wellWater") experimentController.instance.AddCoinCount(this.gameObject);
+
+        if(other.gameObject.tag == "coinReset") experimentController.instance.ResetCoin(this.gameObject);
     }
 }
