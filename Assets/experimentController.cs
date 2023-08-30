@@ -1,11 +1,15 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System.IO;
+using System;
 
 public enum PROGRAM_STATUS
 {
     TEST,
     START,
+    INTER_TRIAL,
+    PRE_TRIAL,
     TRIAL,
     POST_TRIAL,
     END
@@ -33,6 +37,7 @@ public class experimentController : MonoBehaviour {
     public OVRPassthroughLayer passthroughLayer;
     public Camera centerEye;
     public List<GameObject> conditions = new List<GameObject>();
+    public GameObject waterObject;
     public GameObject realCoinPrefab;
     public GameObject toonCoinPrefab;
     public int maxCoins = 5;
@@ -43,12 +48,16 @@ public class experimentController : MonoBehaviour {
 
     public GameObject experimentEnv;
     public GameObject participantUI;
+    public GameObject experimentButton;
+
+    private StreamWriter detailOutput;
 
     public List<GameObject> availSpawn = new List<GameObject>();
     public List<coinSpawn> coinSpawnList = new List<coinSpawn>();
 
+    private PROGRAM_STATUS currentStatus = PROGRAM_STATUS.START;
 
-    private PROGRAM_STATUS currentStatus = PROGRAM_STATUS.TEST;
+    private bool nextPush = false;
 
     public int[,] conditionSquare = {   {0, 1, 3, 4, 5, 2 }, 
                                         {1, 4, 0, 2, 3, 5 }, 
@@ -61,6 +70,7 @@ public class experimentController : MonoBehaviour {
 
     private int participantID = 1;
     private int trialNumber = 0;
+    private int trialID = 0;
     private int currentVE = -1;
     private bool toonVE = false;
     private int coinCount = 0;
@@ -77,14 +87,36 @@ public class experimentController : MonoBehaviour {
             availSpawn.Add(coinSpawns[i]);
         }
 
-        SetNextVE();
+        //SetNextVE();
     }
 
     // Update is called once per frame
     void Update()
     {
-        if ((OVRInput.Get(OVRInput.Button.PrimaryThumbstick) && OVRInput.Get(OVRInput.Button.SecondaryThumbstick)) || Input.GetKeyDown(KeyCode.E)) SetNextVE();
-        if ((OVRInput.Get(OVRInput.RawButton.A) && OVRInput.Get(OVRInput.RawButton.X)) || Input.GetKeyDown(KeyCode.R)) ResetCoins();
+        switch(currentStatus)
+        {
+            case PROGRAM_STATUS.INTER_TRIAL:
+            case PROGRAM_STATUS.TRIAL:
+                if (((OVRInput.GetDown(OVRInput.Button.PrimaryThumbstick) && OVRInput.GetDown(OVRInput.Button.SecondaryThumbstick)) || Input.GetKeyDown(KeyCode.E)) && !nextPush)
+                {
+                    nextPush = true;
+                    detailOutput.WriteLine(participantID + "," + trialID + ",trial skip," + Time.deltaTime);
+                    SetNextVE();
+                }
+                if ((OVRInput.Get(OVRInput.RawButton.A) && OVRInput.Get(OVRInput.RawButton.X)) || Input.GetKeyDown(KeyCode.R))
+                {
+                    detailOutput.WriteLine(participantID + "," + trialID + ",coin reset," + Time.deltaTime);
+                    ResetCoins();
+                }
+                break;
+        }
+
+
+
+        if (OVRInput.GetUp(OVRInput.Button.PrimaryThumbstick) || OVRInput.GetDown(OVRInput.Button.SecondaryThumbstick) || Input.GetKeyUp(KeyCode.E))
+        {
+            nextPush = false;
+        }
 
         if (currentStatus == PROGRAM_STATUS.TEST || currentStatus == PROGRAM_STATUS.TRIAL)
         {
@@ -95,8 +127,6 @@ public class experimentController : MonoBehaviour {
                     spawnCoins = true;
                     timeElapsed = 0.0f;
                 }
-
-                timeElapsed += Time.deltaTime;
             }
 
             if (coinSpawnCount < maxCoins && spawnCoins)
@@ -106,29 +136,32 @@ public class experimentController : MonoBehaviour {
                     SpawnCoin();
                     timeElapsed = 0.0f;
                 }
-
-                timeElapsed += Time.deltaTime;
             }
 
-            if(coinCount >= maxCoins)
+            if(coinCount > maxTotalCoins)
             {
                 if (trialNumber < 5)
                 {
+                    detailOutput.WriteLine(participantID + "," + trialID + ",trail done," + Time.deltaTime);
                     buttonController.instance.SetActive(true);
                     currentStatus = PROGRAM_STATUS.POST_TRIAL;
                 } else
                 {
+                    detailOutput.WriteLine(participantID + "," + trialID + ",end," + Time.deltaTime);
+                    detailOutput.Close();
                     buttonController.instance.SetEnd();
                     currentStatus = PROGRAM_STATUS.END;
                 }
 
             }
         }
+
+        timeElapsed += Time.deltaTime;
     }
 
     public void buttonPush()
     {
-        if(currentStatus == PROGRAM_STATUS.POST_TRIAL)
+        if(currentStatus == PROGRAM_STATUS.PRE_TRIAL || currentStatus == PROGRAM_STATUS.POST_TRIAL)
         { 
             SetNextVE();
             buttonController.instance.SetActive(false);
@@ -141,10 +174,14 @@ public class experimentController : MonoBehaviour {
         if(PID != "")
         {
             participantID = int.Parse(PID);
-            experimentEnv.SetActive(true);
+            experimentEnv.SetActive(true); 
+            //experimentButton.SetActive(true);
+            buttonController.instance.SetActive(true);
             participantUI.SetActive(false);
-            currentStatus = PROGRAM_STATUS.TRIAL;
-            SetNextVE();
+            currentStatus = PROGRAM_STATUS.PRE_TRIAL;
+            detailOutput = new StreamWriter(Application.persistentDataPath + "/MRPresence-" + DateTime.Now.ToString("ddMMyy-HHmmss-") + participantID + ".csv");
+            detailOutput.WriteLine("Participant ID,Trail ID,Event,Time");
+            //SetNextVE();
         }
     }
 
@@ -158,7 +195,9 @@ public class experimentController : MonoBehaviour {
             ChangeVE(trialNumber);
         } else
         {
-            ChangeVE(conditionSquare[participantID % 6, trialNumber]);
+            trialID = conditionSquare[participantID % 6, trialNumber];
+            detailOutput.WriteLine(participantID + "," + trialID + ",trial start," + Time.time);
+            ChangeVE(trialID);
         }
     }
 
@@ -167,6 +206,7 @@ public class experimentController : MonoBehaviour {
         if(currentVE >= 0) conditions[currentVE].SetActive(false);
         currentVE = newVE;
         conditions[currentVE].SetActive(true);
+
         if(conditions[currentVE].name.Contains("Real")) {
             passthroughLayer.edgeRenderingEnabled = false;
             toonVE = false;
@@ -192,7 +232,7 @@ public class experimentController : MonoBehaviour {
     {
         if (coinSpawnCount < maxCoins)
         {
-            int spawnPoint = Random.Range(0, availSpawn.Count);
+            int spawnPoint = UnityEngine.Random.Range(0, availSpawn.Count);
             GameObject newCoin = null;
 
             if (toonVE)
@@ -214,6 +254,8 @@ public class experimentController : MonoBehaviour {
 
     public void AddCoinCount(GameObject coin) 
     {
+        waterObject.GetComponent<AudioSource>().Play();
+
         foreach (coinSpawn spawn in coinSpawnList)
         {
             if(spawn.coin == coin)
@@ -227,6 +269,7 @@ public class experimentController : MonoBehaviour {
         Destroy(coin);
         coinSpawnCount--;
         coinCount++;
+        detailOutput.WriteLine(participantID + "," + trialID + ",drop coin " + coinCount + "," + Time.deltaTime);
     }
 
     private void ResetCoins()
@@ -258,5 +301,21 @@ public class experimentController : MonoBehaviour {
         }
 
         coinSpawnList.Clear();
+    }
+
+    private void ChangeState(PROGRAM_STATUS newState)
+    {
+        switch(newState)
+        {
+            case PROGRAM_STATUS.INTER_TRIAL:
+
+                break;
+            case PROGRAM_STATUS.TRIAL:
+
+                break;
+            case PROGRAM_STATUS.END:
+
+                break;
+        }
     }
 }
