@@ -8,7 +8,6 @@ public enum PROGRAM_STATUS
 {
     TEST,
     START,
-    INTER_TRIAL,
     PRE_TRIAL,
     TRIAL,
     POST_TRIAL,
@@ -41,7 +40,7 @@ public class experimentController : MonoBehaviour {
     public GameObject realCoinPrefab;
     public GameObject toonCoinPrefab;
     public int maxCoins = 5;
-    public int maxTotalCoins = 5;
+    public int coinDropGoal = 5;
     public float timeBeforeSpawn = 90.0f;
     public bool spawnCoins = false;
     public float timeToSpawn = 30.0f;
@@ -93,22 +92,19 @@ public class experimentController : MonoBehaviour {
     // Update is called once per frame
     void Update()
     {
-        switch(currentStatus)
+        if(currentStatus == PROGRAM_STATUS.PRE_TRIAL || currentStatus == PROGRAM_STATUS.POST_TRIAL || currentStatus == PROGRAM_STATUS.TRIAL)
         {
-            case PROGRAM_STATUS.INTER_TRIAL:
-            case PROGRAM_STATUS.TRIAL:
-                if (((OVRInput.GetDown(OVRInput.Button.PrimaryThumbstick) && OVRInput.GetDown(OVRInput.Button.SecondaryThumbstick)) || Input.GetKeyDown(KeyCode.E)) && !nextPush)
-                {
-                    nextPush = true;
-                    detailOutput.WriteLine(participantID + "," + trialID + ",trial skip," + Time.deltaTime);
-                    SetNextVE();
-                }
-                if ((OVRInput.Get(OVRInput.RawButton.A) && OVRInput.Get(OVRInput.RawButton.X)) || Input.GetKeyDown(KeyCode.R))
-                {
-                    detailOutput.WriteLine(participantID + "," + trialID + ",coin reset," + Time.deltaTime);
-                    ResetCoins();
-                }
-                break;
+            if (((OVRInput.GetDown(OVRInput.Button.PrimaryThumbstick) && OVRInput.GetDown(OVRInput.Button.SecondaryThumbstick)) || Input.GetKeyDown(KeyCode.E)) && !nextPush)
+            {
+                nextPush = true;
+                detailOutput.WriteLine(participantID + "," + trialID + ",trial skip," + Time.deltaTime);
+                SetNextVE();
+            }
+            if ((OVRInput.Get(OVRInput.RawButton.A) && OVRInput.Get(OVRInput.RawButton.X)) || Input.GetKeyDown(KeyCode.R))
+            {
+                detailOutput.WriteLine(participantID + "," + trialID + ",coin reset," + Time.deltaTime);
+                ResetCoins();
+            }
         }
 
 
@@ -118,18 +114,31 @@ public class experimentController : MonoBehaviour {
             nextPush = false;
         }
 
-        if (currentStatus == PROGRAM_STATUS.TEST || currentStatus == PROGRAM_STATUS.TRIAL)
-        {
-            if (!spawnCoins)
-            {
-                if (timeElapsed >= timeBeforeSpawn)
-                {
-                    spawnCoins = true;
-                    timeElapsed = 0.0f;
-                }
-            }
 
-            if (coinSpawnCount < maxCoins && spawnCoins)
+        // Main update loop
+        switch(currentStatus)
+        {
+            case PROGRAM_STATUS.TRIAL:
+                SpawnCoins();
+                break;
+        }
+
+        timeElapsed += Time.deltaTime;
+    }
+
+    private void SpawnCoins()
+    {
+        if (!spawnCoins)
+        {
+            if (timeElapsed >= timeBeforeSpawn)
+            {
+                spawnCoins = true;
+                timeElapsed = 0.0f;
+            }
+        }
+        else
+        {
+            if (coinSpawnCount < maxCoins)
             {
                 if (timeElapsed >= timeToSpawn)
                 {
@@ -137,26 +146,23 @@ public class experimentController : MonoBehaviour {
                     timeElapsed = 0.0f;
                 }
             }
-
-            if(coinCount > maxTotalCoins)
-            {
-                if (trialNumber < 5)
-                {
-                    detailOutput.WriteLine(participantID + "," + trialID + ",trail done," + Time.deltaTime);
-                    buttonController.instance.SetActive(true);
-                    currentStatus = PROGRAM_STATUS.POST_TRIAL;
-                } else
-                {
-                    detailOutput.WriteLine(participantID + "," + trialID + ",end," + Time.deltaTime);
-                    detailOutput.Close();
-                    buttonController.instance.SetEnd();
-                    currentStatus = PROGRAM_STATUS.END;
-                }
-
-            }
         }
+    }
 
-        timeElapsed += Time.deltaTime;
+    private void CheckForEndOfTrial()
+    {
+        if (coinCount >= coinDropGoal)
+        {
+            if (trialNumber < 5)
+            {
+                ChangeState(PROGRAM_STATUS.POST_TRIAL);
+            }
+            else
+            {
+                ChangeState(PROGRAM_STATUS.END);
+            }
+
+        }
     }
 
     public void buttonPush()
@@ -216,10 +222,8 @@ public class experimentController : MonoBehaviour {
         }
 
         if (conditions[currentVE].name.Contains("High")) {
-            //ovrManager.isInsightPassthroughEnabled = false;
             centerEye.clearFlags = CameraClearFlags.Skybox;
         } else {
-            //ovrManager.isInsightPassthroughEnabled = true;
             centerEye.clearFlags = CameraClearFlags.SolidColor;
         }
 
@@ -230,26 +234,23 @@ public class experimentController : MonoBehaviour {
 
     private void SpawnCoin()
     {
-        if (coinSpawnCount < maxCoins)
+        int spawnPoint = UnityEngine.Random.Range(0, availSpawn.Count);
+        GameObject newCoin = null;
+
+        if (toonVE)
         {
-            int spawnPoint = UnityEngine.Random.Range(0, availSpawn.Count);
-            GameObject newCoin = null;
-
-            if (toonVE)
-            {
-                newCoin = Instantiate(toonCoinPrefab, availSpawn[spawnPoint].transform.position, Quaternion.identity);
-            }
-            else
-            {
-                newCoin = Instantiate(realCoinPrefab, availSpawn[spawnPoint].transform.position, Quaternion.identity);
-            }
-
-            coinSpawn newSpawn = new coinSpawn(newCoin, availSpawn[spawnPoint]);
-            coinSpawnList.Add(newSpawn);
-            availSpawn.Remove(availSpawn[spawnPoint]);  
-
-            coinSpawnCount++;
+            newCoin = Instantiate(toonCoinPrefab, availSpawn[spawnPoint].transform.position, Quaternion.identity);
         }
+        else
+        {
+            newCoin = Instantiate(realCoinPrefab, availSpawn[spawnPoint].transform.position, Quaternion.identity);
+        }
+
+        coinSpawn newSpawn = new coinSpawn(newCoin, availSpawn[spawnPoint]);
+        coinSpawnList.Add(newSpawn);
+        availSpawn.Remove(availSpawn[spawnPoint]);  
+
+        coinSpawnCount++;
     }
 
     public void AddCoinCount(GameObject coin) 
@@ -307,14 +308,26 @@ public class experimentController : MonoBehaviour {
     {
         switch(newState)
         {
-            case PROGRAM_STATUS.INTER_TRIAL:
+            case PROGRAM_STATUS.START:
 
+                break;
+            case PROGRAM_STATUS.PRE_TRIAL:
+                // reset all coin data
+                buttonController.instance.SetActive(true);
                 break;
             case PROGRAM_STATUS.TRIAL:
-
+                // deactive button
+                // next VE
+                // start coin spawn
+                break;
+            case PROGRAM_STATUS.POST_TRIAL:
+                detailOutput.WriteLine(participantID + "," + trialID + ",trail done," + Time.deltaTime);
+                ChangeState(PROGRAM_STATUS.PRE_TRIAL);
                 break;
             case PROGRAM_STATUS.END:
-
+                detailOutput.WriteLine(participantID + "," + trialID + ",end," + Time.deltaTime);
+                detailOutput.Close();
+                buttonController.instance.SetEnd();
                 break;
         }
     }
