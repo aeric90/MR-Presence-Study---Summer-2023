@@ -57,6 +57,7 @@ public class experimentController : MonoBehaviour {
     private PROGRAM_STATUS currentStatus = PROGRAM_STATUS.START;
 
     private bool nextPush = false;
+    private bool resetPush = false;
 
     public int[,] conditionSquare = {   {0, 1, 3, 4, 5, 2 }, 
                                         {1, 4, 0, 2, 3, 5 }, 
@@ -72,6 +73,7 @@ public class experimentController : MonoBehaviour {
     private int trialID = 0;
     private int currentVE = -1;
     private bool toonVE = false;
+
     private int coinCount = 0;
     private int coinSpawnCount = 0;
     private float timeElapsed = 0.0f;
@@ -100,30 +102,33 @@ public class experimentController : MonoBehaviour {
                 detailOutput.WriteLine(participantID + "," + trialID + ",trial skip," + Time.deltaTime);
                 SetNextVE();
             }
-            if ((OVRInput.Get(OVRInput.RawButton.A) && OVRInput.Get(OVRInput.RawButton.X)) || Input.GetKeyDown(KeyCode.R))
+            if (((OVRInput.Get(OVRInput.RawButton.A) && OVRInput.Get(OVRInput.RawButton.X)) || Input.GetKeyDown(KeyCode.R)) && !resetPush)
             {
+                resetPush = true;
                 detailOutput.WriteLine(participantID + "," + trialID + ",coin reset," + Time.deltaTime);
-                ResetCoins();
+                ResetCoins(); 
             }
         }
 
-
-
-        if (OVRInput.GetUp(OVRInput.Button.PrimaryThumbstick) || OVRInput.GetDown(OVRInput.Button.SecondaryThumbstick) || Input.GetKeyUp(KeyCode.E))
+        if (OVRInput.GetUp(OVRInput.Button.PrimaryThumbstick) || OVRInput.GetUp(OVRInput.Button.SecondaryThumbstick) || Input.GetKeyUp(KeyCode.E))
         {
             nextPush = false;
         }
 
-
-        // Main update loop
-        switch(currentStatus)
+        if (OVRInput.GetUp(OVRInput.RawButton.A) || OVRInput.GetUp(OVRInput.RawButton.X) || Input.GetKeyUp(KeyCode.R))
         {
-            case PROGRAM_STATUS.TRIAL:
-                SpawnCoins();
-                break;
+            resetPush = false;
         }
 
-        timeElapsed += Time.deltaTime;
+        // Main update loop
+        switch (currentStatus)
+        {
+            case PROGRAM_STATUS.TRIAL:
+                timeElapsed += Time.deltaTime;
+                SpawnCoins();
+                CheckForEndOfTrial();
+                break;
+        }       
     }
 
     private void SpawnCoins()
@@ -138,12 +143,12 @@ public class experimentController : MonoBehaviour {
         }
         else
         {
-            if (coinSpawnCount < maxCoins)
+            if (coinSpawnCount + coinCount < maxCoins)
             {
                 if (timeElapsed >= timeToSpawn)
                 {
-                    SpawnCoin();
                     timeElapsed = 0.0f;
+                    SpawnCoin();
                 }
             }
         }
@@ -153,7 +158,7 @@ public class experimentController : MonoBehaviour {
     {
         if (coinCount >= coinDropGoal)
         {
-            if (trialNumber < 5)
+            if (trialNumber <= 5)
             {
                 ChangeState(PROGRAM_STATUS.POST_TRIAL);
             }
@@ -161,18 +166,12 @@ public class experimentController : MonoBehaviour {
             {
                 ChangeState(PROGRAM_STATUS.END);
             }
-
         }
     }
 
     public void buttonPush()
     {
-        if(currentStatus == PROGRAM_STATUS.PRE_TRIAL || currentStatus == PROGRAM_STATUS.POST_TRIAL)
-        { 
-            SetNextVE();
-            buttonController.instance.SetActive(false);
-            currentStatus = PROGRAM_STATUS.TRIAL;
-        }
+        if(currentStatus == PROGRAM_STATUS.PRE_TRIAL) ChangeState(PROGRAM_STATUS.TRIAL);
     }
 
     public void UIStart(string PID)
@@ -180,31 +179,25 @@ public class experimentController : MonoBehaviour {
         if(PID != "")
         {
             participantID = int.Parse(PID);
-            experimentEnv.SetActive(true); 
-            //experimentButton.SetActive(true);
-            buttonController.instance.SetActive(true);
             participantUI.SetActive(false);
-            currentStatus = PROGRAM_STATUS.PRE_TRIAL;
-            detailOutput = new StreamWriter(Application.persistentDataPath + "/MRPresence-" + DateTime.Now.ToString("ddMMyy-HHmmss-") + participantID + ".csv");
-            detailOutput.WriteLine("Participant ID,Trail ID,Event,Time");
-            //SetNextVE();
+            ChangeState(PROGRAM_STATUS.START);
         }
     }
 
     private void SetNextVE()
     {
         DeleteCoins();
-        trialNumber++;
+        
         if (currentStatus == PROGRAM_STATUS.TEST || participantID == 0)
         {
             if(trialNumber >= conditions.Count) trialNumber = 0;
-            ChangeVE(trialNumber);
+            trialID = trialNumber;
         } else
         {
             trialID = conditionSquare[participantID % 6, trialNumber];
-            detailOutput.WriteLine(participantID + "," + trialID + ",trial start," + Time.time);
-            ChangeVE(trialID);
         }
+        trialNumber++;
+        ChangeVE(trialID);
     }
 
     private void ChangeVE(int newVE)
@@ -270,7 +263,7 @@ public class experimentController : MonoBehaviour {
         Destroy(coin);
         coinSpawnCount--;
         coinCount++;
-        detailOutput.WriteLine(participantID + "," + trialID + ",drop coin " + coinCount + "," + Time.deltaTime);
+        detailOutput.WriteLine(participantID + "," + trialID + ",drop coin " + coinCount + "," + Time.time);
     }
 
     private void ResetCoins()
@@ -306,26 +299,30 @@ public class experimentController : MonoBehaviour {
 
     private void ChangeState(PROGRAM_STATUS newState)
     {
+        currentStatus = newState;
+
         switch(newState)
         {
             case PROGRAM_STATUS.START:
-
+                detailOutput = new StreamWriter(Application.persistentDataPath + "/MRPresence-" + DateTime.Now.ToString("ddMMyy-HHmmss-") + participantID + ".csv");
+                detailOutput.WriteLine("Participant ID,Trail ID,Event,Time");
+                ChangeState(PROGRAM_STATUS.PRE_TRIAL);
                 break;
             case PROGRAM_STATUS.PRE_TRIAL:
-                // reset all coin data
                 buttonController.instance.SetActive(true);
                 break;
             case PROGRAM_STATUS.TRIAL:
-                // deactive button
-                // next VE
-                // start coin spawn
+                SetNextVE();
+                detailOutput.WriteLine(participantID + "," + trialID + ",trial start," + Time.time);
+                buttonController.instance.SetActive(false);
                 break;
             case PROGRAM_STATUS.POST_TRIAL:
-                detailOutput.WriteLine(participantID + "," + trialID + ",trail done," + Time.deltaTime);
+                experimentButton.GetComponent<AudioSource>().Play();
+                detailOutput.WriteLine(participantID + "," + trialID + ",trail done," + Time.time);
                 ChangeState(PROGRAM_STATUS.PRE_TRIAL);
                 break;
             case PROGRAM_STATUS.END:
-                detailOutput.WriteLine(participantID + "," + trialID + ",end," + Time.deltaTime);
+                detailOutput.WriteLine(participantID + "," + trialID + ",end," + Time.time);
                 detailOutput.Close();
                 buttonController.instance.SetEnd();
                 break;
