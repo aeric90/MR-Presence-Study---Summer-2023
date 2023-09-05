@@ -54,7 +54,7 @@ public class experimentController : MonoBehaviour {
     public List<GameObject> availSpawn = new List<GameObject>();
     public List<coinSpawn> coinSpawnList = new List<coinSpawn>();
 
-    private PROGRAM_STATUS currentStatus = PROGRAM_STATUS.START;
+    public PROGRAM_STATUS currentStatus = PROGRAM_STATUS.START;
 
     private bool nextPush = false;
     private bool resetPush = false;
@@ -94,6 +94,11 @@ public class experimentController : MonoBehaviour {
     // Update is called once per frame
     void Update()
     {
+        if(currentStatus == PROGRAM_STATUS.TEST)
+        {
+            UIStart("0");
+        }
+
         if(currentStatus == PROGRAM_STATUS.PRE_TRIAL || currentStatus == PROGRAM_STATUS.POST_TRIAL || currentStatus == PROGRAM_STATUS.TRIAL)
         {
             if (((OVRInput.GetDown(OVRInput.Button.PrimaryThumbstick) && OVRInput.GetDown(OVRInput.Button.SecondaryThumbstick)) || Input.GetKeyDown(KeyCode.E)) && !nextPush)
