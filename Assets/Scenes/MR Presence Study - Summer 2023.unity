@@ -8828,8 +8828,8 @@ MonoBehaviour:
   waterObject: {fileID: 235686928}
   realCoinPrefab: {fileID: 1302164853537205653, guid: 001956d1502f297468ff699e30564720, type: 3}
   toonCoinPrefab: {fileID: 1302164853537205653, guid: dae199ee10460d2419368dfec6947008, type: 3}
-  maxCoins: 2
-  coinDropGoal: 2
+  maxCoins: 6
+  coinDropGoal: 12
   timeBeforeSpawn: 5
   spawnCoins: 0
   timeToSpawn: 10
